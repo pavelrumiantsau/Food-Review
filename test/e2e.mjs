@@ -62,7 +62,8 @@ async function seed(initData) {
       body: JSON.stringify(body),
     });
   await post("/places", { name: "Aardvark Bistro", categories: ["Lithuanian"], rating: 8 });
-  await post("/places", { name: "Bravo Pizza", categories: ["Pizza"] });
+  await post("/places", { name: "Bravo Pizza", categories: ["Pizza"], lat: 54.6872, lng: 25.2797 });
+  await post("/places", { name: "Charlie Grill", categories: ["BBQ"], lat: 54.7, lng: 25.3 });
   // Enough rows to scroll.
   for (let i = 1; i <= 40; i++) await post("/places", { name: `Place ${String(i).padStart(2, "0")}`, categories: ["General"], rating: i === 1 ? 6 : undefined });
   // Mark two places as imported from the old 5-point list.
@@ -76,6 +77,16 @@ async function run(browser, initData) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   // Telegram's showConfirm talks to the native client; auto-confirm instead.
+  // Play the native Telegram client for location requests: a fixed spot in Vilnius Old Town.
+  await page.evaluateOnNewDocument(() => {
+    const reply = (type, data) => setTimeout(() => window.Telegram.WebView.receiveEvent(type, data), 10);
+    window.TelegramWebviewProxy = {
+      postEvent(type) {
+        if (type === "web_app_check_location") reply("location_checked", { available: true, access_requested: true, access_granted: true });
+        if (type === "web_app_request_location") reply("location_requested", { available: true, latitude: 54.6869, longitude: 25.2795 });
+      },
+    };
+  });
   await page.evaluateOnNewDocument(() => {
     const iv = setInterval(() => {
       if (window.Telegram?.WebApp) {
@@ -161,6 +172,16 @@ async function run(browser, initData) {
   check("stats links to the imported-ratings filter", (await page.$$eval(".chip.active", (e) => e.map((x) => x.textContent))).includes("Re-rate imported"));
   await click(".chip", "All");
 
+  await page.select(".filters select:last-child", "distance");
+  await wait(1000);
+  const nearest = await page.$$eval(".list li", (rows) => rows.map((r) => r.innerText.replace(/\s+/g, " ")));
+  check(
+    `"Nearest" lists only located places, closest first (${nearest.join(" | ")})`,
+    nearest.length === 2 && nearest[0].startsWith("Bravo Pizza") && /\d+ m/.test(nearest[0]) && /km/.test(nearest[1]),
+  );
+  await page.select(".filters select:last-child", "name");
+  await wait(500);
+
   await page.type(".search", "saltibarsciai");
   await wait(1200);
   check("search finds a dish without diacritics", (await text()).includes("Aardvark Bistro"));
@@ -172,13 +193,28 @@ async function run(browser, initData) {
   await page.waitForSelector("form input");
   await page.type("form input", "3017620422003");
   await click("button", "Go");
-  await wait(2500);
-  check("scanned barcode opens a prefilled new product", (await page.$eval(".field input", (i) => i.value)) === "Nutella");
+  const prefilled = await page
+    .waitForFunction(() => document.querySelector(".field input")?.value === "Nutella", { timeout: 15000 })
+    .then(() => true, () => false);
+  check("scanned barcode opens a prefilled new product", prefilled);
   await click(".rating-picker button", "8");
   await click("button", "Add product");
   check("product is saved", /\/product\/\d+$/.test(page.url()));
+  await click(".rating-picker button", "9");
+  await click("button", "Save");
+  check("re-rating a product keeps its history", /History:\s*8 \S+ → 9/.test(await text()));
   await back();
   check("Back from a deep link goes home", await onHome());
+
+  const mapsLink =
+    "https://www.google.com/maps/place/Amatinink%C5%B3+u%C5%BEeiga/@54.6795,25.2858,17z/data=!3m1!4b1!8m2!3d54.6797212!4d25.2881938";
+  await page.goto(`${BASE}/place/new?map_url=${encodeURIComponent(mapsLink)}${hash}`);
+  await wait(3000); // Nominatim lookup
+  const filled = await page.$$eval(".field input", (inputs) => inputs.map((i) => i.value));
+  check(`a Google Maps link fills name and address (${filled.slice(0, 1)}, ${filled.find((v) => /\d/.test(v) && !v.startsWith("http"))})`,
+    filled[0] === "Amatininkų užeiga" && (await text()).includes("Location saved from Google Maps"));
+  await click("button", "Add place");
+  check("the new place has a map link", (await text()).includes("Map"));
 
   check(`no page errors${errors.length ? `: ${errors.join(" | ")}` : ""}`, errors.length === 0);
 }

@@ -154,7 +154,7 @@ wrangler.jsonc
 - [ ] Open Food Facts lookup, cached in `products`.
 - [x] Mini App: Scan screen, product card/form, rating control.
 - [ ] Bot: 1–10 inline rating keyboard, optional review step.
-- [ ] Photo upload: resized on the phone, then sent to R2, served through signed URLs.
+- [ ] ⏸ **Deferred (future):** photo upload, resized on the phone, then sent to R2, served through signed URLs. See *Future: photos* below.
 
 ### Phase 3 — Places + Excel import
 - [x] Mini App: place list/detail/form, visits, dishes, categories, tags, price level, delete.
@@ -174,9 +174,23 @@ wrangler.jsonc
 
 ### Later / nice-to-have
 - [x] Inline mode (`@yourbot snickers` in any chat, to share a rating). Needs `/setinline` in @BotFather.
-- "Near me": sort places by distance (Telegram `LocationManager`).
-- Paste a Google Maps link, which auto-fills name/address/coordinates.
-- Rating history for products (re-tasting over time).
+- [x] "Near me": "Nearest" sort for places with a location (Telegram `LocationManager`, browser geolocation fallback).
+- [x] Paste a Google Maps link, which auto-fills name/address/coordinates (address via OpenStreetMap Nominatim). Sharing a Maps link to the bot offers "Add place" / "Save location".
+- [x] Rating history for products (re-tasting over time), migration `0002`.
+
+### Future: photos (deferred 2026-10-01, waiting for R2)
+Skipped for now by decision; everything else is built so photos can be added without rework.
+- **Prerequisite:** enable R2 in the Cloudflare dashboard (R2 → Enable; may ask for a card even on the free tier),
+  then `npx wrangler r2 bucket create food-review-photos` and add the `PHOTOS` binding to `wrangler.jsonc`.
+- **Schema:** migration adding `photos(id, entity_type, entity_id, r2_key, width, height, created_at)`;
+  add `photos` to `src/db/tables.ts` so backups include the rows.
+- **Upload:** resize on the phone (max 1600 px, JPEG ~80%), `PUT /api/photos` → R2; photo sent to the bot with
+  `#place Name` / `#product Name` caption attaches too.
+- **Serving:** `GET /api/photos/:id` through the Worker with a short-lived signed token (images can't send the
+  `Authorization` header).
+- **Deleting** a place/product also deletes its R2 objects; `/export` adds a photo ZIP or a separate album.
+- **Alternative without R2** (if a card is a blocker): store Telegram `file_id`s. It's free and unlimited, but tied
+  to this bot, so photos would need re-uploading on migration.
 
 ## 6a. Excel import spec (`data/Vilnius restaurants.xlsx`)
 

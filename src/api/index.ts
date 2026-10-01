@@ -7,6 +7,7 @@ import { search } from "../db/search";
 import { getStats } from "../db/stats";
 import { listVocabulary, PLACE_CATEGORIES, PLACE_TAGS, PRODUCT_TAGS } from "../db/taxonomy";
 import type { Env } from "../env";
+import { resolveMapsLink } from "../lib/maps";
 import { lookupBarcode } from "../lib/off";
 import { type TelegramUser, validateInitData } from "../lib/telegram-auth";
 import * as s from "./schemas";
@@ -50,6 +51,11 @@ api.get("/search", zValidator("query", s.searchQuery), async (c) => {
 api.get("/off/:barcode{[0-9]{8,14}}", async (c) => {
   const product = await lookupBarcode(c.req.param("barcode"));
   return product ? c.json(product) : c.json(notFound, 404);
+});
+
+api.post("/maps/resolve", zValidator("json", s.mapsResolve), async (c) => {
+  const place = await resolveMapsLink(c.req.valid("json").url);
+  return place ? c.json(place) : c.json({ error: "not_a_maps_link" }, 422);
 });
 
 // --- Products ---

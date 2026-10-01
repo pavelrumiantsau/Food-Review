@@ -3,6 +3,7 @@ export const TABLES = [
   "categories",
   "tags",
   "products",
+  "product_ratings",
   "places",
   "place_categories",
   "product_tags",

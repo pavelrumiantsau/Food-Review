@@ -1,9 +1,10 @@
 import { Bot, InlineKeyboard } from "grammy";
-import { listPlaces } from "../db/places";
+import { getPlace, listPlaces } from "../db/places";
 import { findProductsByBarcode } from "../db/products";
-import { search } from "../db/search";
+import { normalize, search } from "../db/search";
 import type { Env } from "../env";
 import { sendBackup } from "../lib/export";
+import { findMapsUrl, resolveMapsLink } from "../lib/maps";
 import { lookupBarcode } from "../lib/off";
 import { escapeHtml, formatHit, formatProduct, shareText } from "./format";
 import type { SearchHit } from "../types";
@@ -80,6 +81,35 @@ export function getBot(env: Env, webAppUrl: string): Bot {
       { cache_time: 0, is_personal: true },
     );
   });
+
+  // A Google Maps link (e.g. shared from the Maps app on iPhone): offer to add the place,
+  // or to save the location on an existing place with the same name.
+  bot.on("message:text").filter(
+    (ctx) => findMapsUrl(ctx.message.text) !== null,
+    async (ctx) => {
+      await ctx.replyWithChatAction("typing");
+      const place = await resolveMapsLink(ctx.message.text).catch(() => null);
+      if (!place) return ctx.reply("Couldn't read that Google Maps link.");
+      const mapParam = `map_url=${encodeURIComponent(place.mapUrl)}`;
+      const name = place.name ?? "this place";
+      const hit = place.name
+        ? (await search(env.DB, place.name, "place", 10)).find((h) => normalize(h.name) === normalize(place.name!))
+        : undefined;
+      if (hit) {
+        const existing = await getPlace(env.DB, hit.id);
+        const keyboard = new InlineKeyboard().webApp("Open", `${webAppUrl}/place/${hit.id}`);
+        if (existing && existing.lat === null) keyboard.webApp("Save location", `${webAppUrl}/place/${hit.id}/edit?${mapParam}`);
+        return ctx.reply(
+          `Already in your list: ${formatHit(hit)}${existing?.lat === null ? "\nIt has no location yet." : ""}`,
+          { parse_mode: "HTML", reply_markup: keyboard },
+        );
+      }
+      return ctx.reply(
+        `📍 <b>${escapeHtml(name)}</b>${place.address ? `\n${escapeHtml(place.address)}` : ""}\nNot in your list yet.`,
+        { parse_mode: "HTML", reply_markup: openApp("Add place", `/place/new?${mapParam}`) },
+      );
+    },
+  );
 
   bot.on("message:text", async (ctx) => {
     const query = ctx.message.text;

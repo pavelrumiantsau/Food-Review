@@ -131,3 +131,28 @@ describe("stats", () => {
     expect(body.recentVisits[0]).toMatchObject({ name: "D", visited_on: "2020-01-01", rating: 5 });
   });
 });
+
+describe("product rating history", () => {
+  it("appends only when the rating changes", async () => {
+    const { body: p } = await call("POST", "/products", { name: "Kefir", rating: 6 });
+    await call("PATCH", `/products/${p.id}`, { rating: 6, review: "same" });
+    await call("PATCH", `/products/${p.id}`, { rating: 8 });
+    await call("PATCH", `/products/${p.id}`, { rating: null });
+    const { body } = await call("GET", `/products/${p.id}`);
+    expect(body.rating).toBeNull();
+    expect(body.rating_history.map((h: any) => h.rating)).toEqual([6, 8]);
+  });
+});
+
+describe("places by distance", () => {
+  it("returns only places with coordinates, nearest first, with km", async () => {
+    await call("POST", "/places", { name: "Far", lat: 54.73, lng: 25.3 });
+    await call("POST", "/places", { name: "Near", lat: 54.6872, lng: 25.28 });
+    await call("POST", "/places", { name: "Nowhere" });
+    const { body } = await call("GET", "/places?sort=distance&near=54.6871,25.2797");
+    expect(body.items.map((p: any) => p.name)).toEqual(["Near", "Far"]);
+    expect(body.items[0].distance_km).toBeLessThan(0.1);
+    expect(body.items[1].distance_km).toBeCloseTo(4.9, 0);
+    expect((await call("GET", "/places?sort=distance")).status).toBe(400);
+  });
+});

@@ -6,6 +6,8 @@ import { useLoad } from "../hooks";
 import { goBack, navigate } from "../router";
 import { confirmDialog, haptic } from "../telegram";
 
+type History = NonNullable<Product["rating_history"]>;
+
 interface Form {
   name: string;
   brand: string;
@@ -49,6 +51,7 @@ export function ProductScreen({ id, barcode }: { id?: number; barcode?: string }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const [offStatus, setOffStatus] = useState<string>();
+  const [history, setHistory] = useState<History>([]);
   const tags = useLoad(() => api.get<{ product: { name: string }[] }>("/tags"), []);
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export function ProductScreen({ id, barcode }: { id?: number; barcode?: string }
           const f = fromProduct(p);
           setForm(f);
           setInitial(JSON.stringify(f));
+          setHistory(p.rating_history ?? []);
         })
         .catch((e) => setError(e.message));
     } else if (barcode) {
@@ -94,6 +98,7 @@ export function ProductScreen({ id, barcode }: { id?: number; barcode?: string }
         const p = await api.patch<Product>(`/products/${id}`, body);
         setForm(fromProduct(p));
         setInitial(JSON.stringify(fromProduct(p)));
+        setHistory(p.rating_history ?? []);
       } else {
         const p = await api.post<Product>("/products", body);
         navigate(`/product/${p.id}`, { replace: true });
@@ -127,6 +132,17 @@ export function ProductScreen({ id, barcode }: { id?: number; barcode?: string }
 
       <Field label="Rating">
         <RatingPicker value={form.rating} onChange={(rating) => set({ rating })} />
+        {history.length > 1 && (
+          <span className="hint history">
+            History:{" "}
+            {history.map((h, i) => (
+              <span key={i}>
+                {i > 0 && " → "}
+                <b>{h.rating}</b> {h.rated_at.slice(0, 10)}
+              </span>
+            ))}
+          </span>
+        )}
       </Field>
       <Field label="Name">
         <input value={form.name} onChange={(e) => set({ name: e.target.value })} required />

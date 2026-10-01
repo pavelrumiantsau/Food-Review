@@ -61,7 +61,16 @@ export const placeQuery = z.object({
   min_rating: z.coerce.number().int().min(1).max(10).optional(),
   rated: bool.optional(),
   imported: bool.optional(),
-  sort: z.enum(["name", "rating", "recent"]).optional(),
+  sort: z.enum(["name", "rating", "recent", "distance"]).optional(),
+  /** "lat,lng" */
+  near: z
+    .string()
+    .regex(/^-?\d{1,2}(\.\d+)?,-?\d{1,3}(\.\d+)?$/, "expected lat,lng")
+    .transform((v) => {
+      const [lat, lng] = v.split(",").map(Number);
+      return { lat, lng };
+    })
+    .optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -80,6 +89,8 @@ export const dishInput = z.object({
   notes: text(1000).optional(),
 });
 export const dishPatch = dishInput.partial();
+
+export const mapsResolve = z.object({ url: z.string().max(2000) });
 
 export const searchQuery = z.object({
   q: z.string().max(200),

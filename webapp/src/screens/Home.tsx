@@ -4,10 +4,12 @@ import { api, query } from "../api";
 import { Message, RatingBadge } from "../components";
 import { useDebounced, useLoad } from "../hooks";
 import { navigate } from "../router";
+import { getLocation } from "../telegram";
 
 const PAGE = 50;
 
 type Tab = "places" | "products";
+type Sort = "name" | "rating" | "recent" | "distance";
 type PlaceFilter = "all" | "imported" | "unrated" | "rated";
 
 interface HomeState {
@@ -15,13 +17,24 @@ interface HomeState {
   q: string;
   placeFilter: PlaceFilter;
   category: string;
-  sort: "name" | "rating" | "recent";
+  sort: Sort;
+  /** "lat,lng" of the last location used for "Nearest". */
+  near: string;
   placeLimit: number;
   productLimit: number;
 }
 
 // Survives navigating to a detail screen and back.
-let saved: HomeState = { tab: "places", q: "", placeFilter: "all", category: "", sort: "name", placeLimit: PAGE, productLimit: PAGE };
+let saved: HomeState = {
+  tab: "places",
+  q: "",
+  placeFilter: "all",
+  category: "",
+  sort: "name",
+  near: "",
+  placeLimit: PAGE,
+  productLimit: PAGE,
+};
 
 /** Opens the Places tab of Home with the given filters (used by the Stats screen). */
 export function openPlaces(patch: Partial<HomeState>) {
@@ -105,12 +118,32 @@ const PLACE_FILTERS: { id: PlaceFilter; label: string }[] = [
 function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<HomeState>) => void }) {
   const limit = state.placeLimit;
   const setLimit = (placeLimit: number) => update({ placeLimit });
+  const [locating, setLocating] = useState<string>();
+  const byDistance = state.sort === "distance" && state.near !== "";
+
+  async function sortBy(sort: Sort) {
+    if (sort !== "distance") return update({ sort });
+    setLocating("Getting your location…");
+    try {
+      const { lat, lng } = await getLocation();
+      update({ sort, near: `${lat.toFixed(5)},${lng.toFixed(5)}`, placeLimit: PAGE });
+      setLocating(undefined);
+    } catch (e) {
+      setLocating((e as Error).message);
+    }
+  }
   const categories = useLoad(() => api.get<{ items: { name: string; count: number }[] }>("/categories"), [], "/categories");
   const filter = {
     imported: state.placeFilter === "imported" ? true : undefined,
     rated: state.placeFilter === "unrated" ? false : state.placeFilter === "rated" ? true : undefined,
   };
-  const path = `/places${query({ ...filter, category: state.category, sort: state.sort, limit })}`;
+  const path = `/places${query({
+    ...filter,
+    category: state.category,
+    sort: byDistance ? "distance" : state.sort === "distance" ? "name" : state.sort,
+    near: byDistance ? state.near : undefined,
+    limit,
+  })}`;
   const { data, error, loading } = useLoad(() => api.get<{ items: PlaceSummary[] }>(path), [path], path);
 
   return (
@@ -135,8 +168,12 @@ function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<Ho
             </option>
           ))}
         </select>
-        <SortSelect value={state.sort} onChange={(sort) => update({ sort })} />
+        <SortSelect value={state.sort} onChange={sortBy} withDistance />
       </div>
+      {locating && <p className="message">{locating}</p>}
+      {byDistance && data && (
+        <p className="hint">Only places with a map location are listed. Add a Google Maps link to a place to include it.</p>
+      )}
 
       {data && (
         <ul className="list">
@@ -145,7 +182,11 @@ function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<Ho
               <div className="grow">
                 <div>{p.name}</div>
                 <div className="hint">
-                  {[p.categories.join(", "), p.visit_count ? `${p.visit_count} visit${p.visit_count > 1 ? "s" : ""}` : ""]
+                  {[
+                    p.distance_km !== undefined ? formatDistance(p.distance_km) : "",
+                    p.categories.join(", "),
+                    p.visit_count ? `${p.visit_count} visit${p.visit_count > 1 ? "s" : ""}` : "",
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </div>
@@ -167,7 +208,8 @@ function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<Ho
 }
 
 function ProductList({ state, update }: { state: HomeState; update: (p: Partial<HomeState>) => void }) {
-  const { sort, productLimit: limit } = state;
+  const { productLimit: limit } = state;
+  const sort = state.sort === "distance" ? "name" : state.sort;
   const setLimit = (productLimit: number) => update({ productLimit });
   const path = `/products${query({ sort, limit })}`;
   const { data, error, loading } = useLoad(() => api.get<{ items: Product[] }>(path), [path], path);
@@ -201,12 +243,15 @@ function ProductList({ state, update }: { state: HomeState; update: (p: Partial<
   );
 }
 
-function SortSelect({ value, onChange }: { value: HomeState["sort"]; onChange: (v: HomeState["sort"]) => void }) {
+function SortSelect({ value, onChange, withDistance = false }: { value: Sort; onChange: (v: Sort) => void; withDistance?: boolean }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value as HomeState["sort"])}>
+    <select value={value} onChange={(e) => onChange(e.target.value as Sort)}>
       <option value="name">A–Z</option>
       <option value="rating">Best rated</option>
       <option value="recent">Recently changed</option>
+      {withDistance && <option value="distance">Nearest</option>}
     </select>
   );
 }
+
+const formatDistance = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`);

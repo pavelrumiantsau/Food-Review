@@ -142,3 +142,6 @@ select { width: auto; flex: 1; min-width: 0; text-overflow: ellipsis; appearance
 .bar { display: block; width: 100%; max-width: 24px; background: var(--accent); border-radius: 4px 4px 0 0; transition: opacity 0.15s; }
 .bar-slot.dim .bar { opacity: 0.3; }
 .bar-axis { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; text-align: center; font-size: 12px; color: var(--hint); margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+
+.field .hint { display: block; margin-top: 6px; }
+.history b { color: var(--text); }

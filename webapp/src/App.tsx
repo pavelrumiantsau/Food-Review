@@ -14,8 +14,9 @@ function Screen({ path, params }: ReturnType<typeof useLocation>) {
   if (path === "/stats") return <Stats />;
   if (path === "/product/new") return <ProductScreen barcode={params.get("barcode") ?? undefined} />;
   if ((m = match("/product/:id", path))) return <ProductScreen id={Number(m.id)} />;
-  if (path === "/place/new") return <PlaceForm />;
-  if ((m = match("/place/:id/edit", path))) return <PlaceForm id={Number(m.id)} />;
+  const mapUrl = params.get("map_url") ?? undefined;
+  if (path === "/place/new") return <PlaceForm mapUrl={mapUrl} />;
+  if ((m = match("/place/:id/edit", path))) return <PlaceForm id={Number(m.id)} mapUrl={mapUrl} />;
   if ((m = match("/place/:id", path))) return <PlaceScreen id={Number(m.id)} />;
   return <Home />;
 }

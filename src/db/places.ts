@@ -25,7 +25,7 @@ export type PlaceInput = PlaceFields & {
 };
 export type PlacePatch = PlaceFields & { categories?: string[]; tags?: string[] };
 
-const SUMMARY_COLUMNS = `p.id, p.name, p.city, p.price_level, p.rating, p.rating_imported,
+const SUMMARY_COLUMNS = `p.id, p.name, p.city, p.price_level, p.rating, p.rating_imported, p.lat, p.lng,
   (SELECT group_concat(c.name, char(31)) FROM place_categories pc JOIN categories c ON c.id = pc.category_id
    WHERE pc.place_id = p.id) AS categories,
   (SELECT COUNT(*) FROM visits v WHERE v.place_id = p.id) AS visit_count,
@@ -42,7 +42,7 @@ export async function getPlace(db: D1Database, id: number): Promise<Place | null
   const [place, visits, dishes] = await db.batch([
     db
       .prepare(
-        `SELECT ${SUMMARY_COLUMNS}, p.address, p.map_url, p.website, p.lat, p.lng, p.notes, p.created_at, p.updated_at,
+        `SELECT ${SUMMARY_COLUMNS}, p.address, p.map_url, p.website, p.notes, p.created_at, p.updated_at,
            (SELECT group_concat(t.name, char(31)) FROM place_tags pt JOIN tags t ON t.id = pt.tag_id
             WHERE pt.place_id = p.id) AS tags
          FROM places p WHERE p.id = ?`,
@@ -72,9 +72,20 @@ export interface PlaceListOptions {
   minRating?: number;
   rated?: boolean;
   imported?: boolean;
-  sort?: "name" | "rating" | "recent";
+  sort?: "name" | "rating" | "recent" | "distance";
+  /** Required for sort "distance"; only places with coordinates are returned then. */
+  near?: { lat: number; lng: number };
   limit?: number;
   offset?: number;
+}
+
+/** Great-circle distance in km. */
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const rad = Math.PI / 180;
+  const h =
+    Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lng - a.lng) * rad) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
 const PLACE_ORDER = {
@@ -107,14 +118,30 @@ export async function listPlaces(db: D1Database, opts: PlaceListOptions = {}): P
   if (opts.rated !== undefined) where.push(opts.rated ? "p.rating IS NOT NULL" : "p.rating IS NULL");
   if (opts.imported !== undefined) where.push(`p.rating_imported = ${opts.imported ? 1 : 0}`);
 
+  let order = PLACE_ORDER[opts.sort === "distance" ? "name" : (opts.sort ?? "name")];
+  const near = opts.near;
+  if (opts.sort === "distance") {
+    if (!near) throw new InvalidInput("sort=distance needs near=lat,lng");
+    where.push("p.lat IS NOT NULL AND p.lng IS NOT NULL");
+    // Equirectangular approximation is plenty for ordering within a city.
+    const k = Math.cos((near.lat * Math.PI) / 180);
+    order = `(p.lat - ${near.lat}) * (p.lat - ${near.lat}) + (p.lng - ${near.lng}) * (p.lng - ${near.lng}) * ${k * k}`;
+  }
+
   const { results } = await db
     .prepare(
       `SELECT ${SUMMARY_COLUMNS} FROM places p ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-       ORDER BY ${PLACE_ORDER[opts.sort ?? "name"]} LIMIT ? OFFSET ?`,
+       ORDER BY ${order} LIMIT ? OFFSET ?`,
     )
     .bind(...params, opts.limit ?? 50, opts.offset ?? 0)
     .all<SummaryRow>();
-  return results.map(toSummary);
+  return results.map((row) => {
+    const place = toSummary(row);
+    if (near && place.lat !== null && place.lng !== null) {
+      place.distance_km = Math.round(distanceKm(near, { lat: place.lat, lng: place.lng }) * 100) / 100;
+    }
+    return place;
+  });
 }
 
 export async function createPlace(db: D1Database, input: PlaceInput): Promise<Place> {

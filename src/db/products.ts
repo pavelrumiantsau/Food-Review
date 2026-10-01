@@ -26,9 +26,16 @@ type Row = Omit<Product, "tags"> & { tags: string | null };
 const toProduct = (row: Row): Product => ({ ...row, tags: splitList(row.tags) });
 
 export async function getProduct(db: D1Database, id: number): Promise<Product | null> {
-  const row = await db.prepare(`${SELECT} WHERE id = ?`).bind(id).first<Row>();
-  return row ? toProduct(row) : null;
+  const [product, history] = await db.batch([
+    db.prepare(`${SELECT} WHERE id = ?`).bind(id),
+    db.prepare("SELECT rating, rated_at FROM product_ratings WHERE product_id = ? ORDER BY rated_at, id").bind(id),
+  ]);
+  const row = product.results[0] as Row | undefined;
+  return row ? { ...toProduct(row), rating_history: history.results as Product["rating_history"] } : null;
 }
+
+const recordRating = (db: D1Database, productId: number, rating: number) =>
+  db.prepare("INSERT INTO product_ratings (product_id, rating) VALUES (?, ?)").bind(productId, rating);
 
 export async function findProductsByBarcode(db: D1Database, barcode: string): Promise<Product[]> {
   const { results } = await db.prepare(`${SELECT} WHERE barcode = ? ORDER BY updated_at DESC`).bind(barcode).all<Row>();
@@ -76,7 +83,11 @@ export async function createProduct(db: D1Database, input: ProductInput): Promis
     .prepare(`INSERT INTO products (${keys.join(", ")}) VALUES (${keys.map(() => "?").join(", ")}) RETURNING id`)
     .bind(...keys.map((k) => fields[k as keyof ProductFields] ?? null))
     .first<{ id: number }>())!;
-  if (tags?.length) await db.batch(setLinksStatements(db, PRODUCT_TAGS, id, tags));
+  const follow = [
+    ...(tags?.length ? setLinksStatements(db, PRODUCT_TAGS, id, tags) : []),
+    ...(fields.rating ? [recordRating(db, id, fields.rating)] : []),
+  ];
+  if (follow.length) await db.batch(follow);
   await refreshProductSearch(db, id);
   return (await getProduct(db, id))!;
 }
@@ -84,11 +95,14 @@ export async function createProduct(db: D1Database, input: ProductInput): Promis
 /** Returns null if the product does not exist. */
 export async function updateProduct(db: D1Database, id: number, patch: ProductPatch): Promise<Product | null> {
   const { tags, ...fields } = patch;
+  const current = await db.prepare("SELECT rating FROM products WHERE id = ?").bind(id).first<{ rating: number | null }>();
+  if (!current) return null;
   const statements = [
     updateStatement(db, "products", id, fields, [`updated_at = ${NOW}`]),
     ...(tags ? setLinksStatements(db, PRODUCT_TAGS, id, tags) : []),
+    // A changed rating is appended to the history.
+    ...(fields.rating && fields.rating !== current.rating ? [recordRating(db, id, fields.rating)] : []),
   ].filter((s): s is D1PreparedStatement => s !== null);
-  if (!(await getProduct(db, id))) return null;
   if (statements.length) await db.batch(statements);
   await refreshProductSearch(db, id);
   return getProduct(db, id);

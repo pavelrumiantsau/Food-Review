@@ -13,6 +13,8 @@ export interface Product {
   tags: string[];
   created_at: string;
   updated_at: string;
+  /** Every rating given, oldest first (only on the single-product endpoint). */
+  rating_history?: { rating: number; rated_at: string }[];
 }
 
 export interface PlaceSummary {
@@ -25,6 +27,10 @@ export interface PlaceSummary {
   categories: string[];
   visit_count: number;
   last_visited_on: string | null;
+  lat: number | null;
+  lng: number | null;
+  /** Only when listing by distance. */
+  distance_km?: number;
 }
 
 export interface Visit {
@@ -50,8 +56,6 @@ export interface Place extends PlaceSummary {
   address: string | null;
   map_url: string | null;
   website: string | null;
-  lat: number | null;
-  lng: number | null;
   notes: string | null;
   tags: string[];
   visits: Visit[];
@@ -85,4 +89,13 @@ export interface Stats {
   /** Categories with at least 3 rated places, best average first. */
   topCategories: { name: string; rated: number; avg: number }[];
   recentVisits: { place_id: number; name: string; visited_on: string; rating: number | null }[];
+}
+
+export interface MapsPlace {
+  name: string | null;
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  city: string | null;
+  mapUrl: string;
 }
