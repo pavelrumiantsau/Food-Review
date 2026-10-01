@@ -23,6 +23,12 @@ interface HomeState {
 // Survives navigating to a detail screen and back.
 let saved: HomeState = { tab: "places", q: "", placeFilter: "all", category: "", sort: "name", placeLimit: PAGE, productLimit: PAGE };
 
+/** Opens the Places tab of Home with the given filters (used by the Stats screen). */
+export function openPlaces(patch: Partial<HomeState>) {
+  saved = { ...saved, tab: "places", q: "", placeLimit: PAGE, ...patch };
+  navigate("/");
+}
+
 export function Home() {
   const [state, setState] = useState(saved);
   const update = (patch: Partial<HomeState>) => setState((s) => (saved = { ...s, ...patch }));
@@ -30,6 +36,7 @@ export function Home() {
 
   return (
     <main>
+      <div className="search-row">
       <input
         className="search"
         type="search"
@@ -37,6 +44,10 @@ export function Home() {
         value={state.q}
         onChange={(e) => update({ q: e.target.value })}
       />
+        <button className="secondary" aria-label="Stats" onClick={() => navigate("/stats")}>
+          📊
+        </button>
+      </div>
 
       {q ? (
         <SearchResults q={q} />

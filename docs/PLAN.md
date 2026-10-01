@@ -164,7 +164,7 @@ wrangler.jsonc
 
 ### Phase 4 — Search and polish
 - [ ] Search tuning, filters, sorting, "best rated in category X".
-- [ ] Stats screen.
+- [x] Stats screen (tiles, rating histogram, best categories, recent visits).
 - [ ] Empty/error states, haptic feedback, Telegram theme colours.
 
 ### Phase 5 — Portability and backup
@@ -173,7 +173,7 @@ wrangler.jsonc
 - [x] Document migrating elsewhere in the README.
 
 ### Later / nice-to-have
-- Inline mode (`@yourbot snickers` in any chat, to share a rating).
+- [x] Inline mode (`@yourbot snickers` in any chat, to share a rating). Needs `/setinline` in @BotFather.
 - "Near me": sort places by distance (Telegram `LocationManager`).
 - Paste a Google Maps link, which auto-fills name/address/coordinates.
 - Rating history for products (re-tasting over time).

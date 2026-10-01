@@ -112,3 +112,22 @@ describe("search endpoint", () => {
     expect(body.results.map((h: any) => h.kind).sort()).toEqual(["place", "product"]);
   });
 });
+
+describe("stats", () => {
+  it("summarises ratings, categories and visits", async () => {
+    for (const [name, rating] of [["A", 10], ["B", 8], ["C", 6]] as const) {
+      await call("POST", "/places", { name, rating, categories: ["Pizza"] });
+    }
+    const { body: d } = await call("POST", "/places", { name: "D", categories: ["Pizza"] });
+    await call("POST", `/places/${d.id}/visits`, { visited_on: "2020-01-01", rating: 5 });
+    await call("POST", "/products", { name: "Kefir", rating: 8 });
+
+    const { body } = await call("GET", "/stats");
+    expect(body.places).toEqual({ total: 4, rated: 3, imported: 0, avg: 8 });
+    expect(body.products).toEqual({ total: 1, rated: 1, avg: 8 });
+    expect(body.distribution.places).toEqual([0, 0, 0, 0, 0, 1, 0, 1, 0, 1]);
+    expect(body.topCategories).toEqual([{ name: "Pizza", rated: 3, avg: 8 }]);
+    expect(body.visits).toEqual({ total: 1, last30: 0 });
+    expect(body.recentVisits[0]).toMatchObject({ name: "D", visited_on: "2020-01-01", rating: 5 });
+  });
+});

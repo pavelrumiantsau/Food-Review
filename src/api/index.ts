@@ -4,6 +4,7 @@ import { InvalidInput } from "../db/common";
 import * as places from "../db/places";
 import * as products from "../db/products";
 import { search } from "../db/search";
+import { getStats } from "../db/stats";
 import { listVocabulary, PLACE_CATEGORIES, PLACE_TAGS, PRODUCT_TAGS } from "../db/taxonomy";
 import type { Env } from "../env";
 import { lookupBarcode } from "../lib/off";
@@ -38,6 +39,8 @@ api.onError((err, c) => {
 const id = (param: string) => Number(param);
 
 api.get("/me", (c) => c.json({ user: c.get("user") }));
+
+api.get("/stats", async (c) => c.json(await getStats(c.env.DB)));
 
 api.get("/search", zValidator("query", s.searchQuery), async (c) => {
   const { q, kind, limit } = c.req.valid("query");

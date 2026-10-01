@@ -75,3 +75,14 @@ export interface OffProduct {
   brand: string | null;
   imageUrl: string | null;
 }
+
+export interface Stats {
+  places: { total: number; rated: number; imported: number; avg: number | null };
+  products: { total: number; rated: number; avg: number | null };
+  visits: { total: number; last30: number };
+  /** Count of items per rating; index 0 is rating 1. */
+  distribution: { places: number[]; products: number[] };
+  /** Categories with at least 3 rated places, best average first. */
+  topCategories: { name: string; rated: number; avg: number }[];
+  recentVisits: { place_id: number; name: string; visited_on: string; rating: number | null }[];
+}

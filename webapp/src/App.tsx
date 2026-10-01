@@ -5,11 +5,13 @@ import { PlaceForm } from "./screens/PlaceForm";
 import { PlaceScreen } from "./screens/PlaceScreen";
 import { ProductScreen } from "./screens/ProductScreen";
 import { Scan } from "./screens/Scan";
+import { Stats } from "./screens/Stats";
 import { tg } from "./telegram";
 
 function Screen({ path, params }: ReturnType<typeof useLocation>) {
   let m: Record<string, string> | null;
   if (path === "/scan") return <Scan />;
+  if (path === "/stats") return <Stats />;
   if (path === "/product/new") return <ProductScreen barcode={params.get("barcode") ?? undefined} />;
   if ((m = match("/product/:id", path))) return <ProductScreen id={Number(m.id)} />;
   if (path === "/place/new") return <PlaceForm />;
@@ -20,7 +22,7 @@ function Screen({ path, params }: ReturnType<typeof useLocation>) {
 
 export function App() {
   const location = useLocation();
-  const isHome = !["/scan", "/product", "/place"].some((p) => location.path.startsWith(p));
+  const isHome = !["/scan", "/stats", "/product", "/place"].some((p) => location.path.startsWith(p));
 
   // Telegram's native Back button replaces browser navigation inside the Mini App.
   useEffect(() => {

@@ -64,10 +64,10 @@ async function seed(initData) {
   await post("/places", { name: "Aardvark Bistro", categories: ["Lithuanian"], rating: 8 });
   await post("/places", { name: "Bravo Pizza", categories: ["Pizza"] });
   // Enough rows to scroll.
-  for (let i = 1; i <= 40; i++) await post("/places", { name: `Place ${String(i).padStart(2, "0")}`, categories: ["General"] });
-  // Mark the first place as imported from the old 5-point list.
+  for (let i = 1; i <= 40; i++) await post("/places", { name: `Place ${String(i).padStart(2, "0")}`, categories: ["General"], rating: i === 1 ? 6 : undefined });
+  // Mark two places as imported from the old 5-point list.
   execFileSync("npx", ["wrangler", "d1", "execute", "food-review", "--local", "--persist-to", dir,
-    "--command", "UPDATE places SET rating_imported = 1 WHERE name = 'Aardvark Bistro'"], { stdio: "ignore" });
+    "--command", "UPDATE places SET rating_imported = 1 WHERE name IN ('Aardvark Bistro', 'Place 01')"], { stdio: "ignore" });
 }
 
 async function run(browser, initData) {
@@ -154,6 +154,12 @@ async function run(browser, initData) {
   check("edit saves and returns to the place", (await text()).includes("Gedimino pr. 1"));
   await back();
   check("Back after edit returns to the list", await onHome());
+
+  await click("button", "📊");
+  check("stats screen shows tiles and a histogram", (await page.$(".tile")) !== null && (await page.$(".histogram .bar")) !== null);
+  await click("button", "1 imported ratings to review");
+  check("stats links to the imported-ratings filter", (await page.$$eval(".chip.active", (e) => e.map((x) => x.textContent))).includes("Re-rate imported"));
+  await click(".chip", "All");
 
   await page.type(".search", "saltibarsciai");
   await wait(1200);

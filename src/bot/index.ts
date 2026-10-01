@@ -1,10 +1,12 @@
 import { Bot, InlineKeyboard } from "grammy";
+import { listPlaces } from "../db/places";
 import { findProductsByBarcode } from "../db/products";
 import { search } from "../db/search";
 import type { Env } from "../env";
 import { sendBackup } from "../lib/export";
 import { lookupBarcode } from "../lib/off";
-import { escapeHtml, formatHit, formatProduct } from "./format";
+import { escapeHtml, formatHit, formatProduct, shareText } from "./format";
+import type { SearchHit } from "../types";
 
 const MAX_RESULTS = 10;
 
@@ -53,6 +55,30 @@ export function getBot(env: Env, webAppUrl: string): Bot {
       parse_mode: "HTML",
       reply_markup: openApp("Rate it", `/product/new?barcode=${barcode}`),
     });
+  });
+
+  // Inline mode (`@bot pizza` in any chat) shares a rating as a message. Empty query → best rated places.
+  bot.on("inline_query", async (ctx) => {
+    const q = ctx.inlineQuery.query.trim();
+    const hits: SearchHit[] = q
+      ? await search(env.DB, q, "all", 20)
+      : (await listPlaces(env.DB, { sort: "rating", rated: true, limit: 20 })).map((p) => ({
+          kind: "place",
+          id: p.id,
+          name: p.name,
+          subtitle: p.categories.join(", ") || null,
+          rating: p.rating,
+        }));
+    await ctx.answerInlineQuery(
+      hits.map((hit) => ({
+        type: "article",
+        id: `${hit.kind}-${hit.id}`,
+        title: `${hit.name} — ${hit.rating === null ? "not rated" : `${hit.rating}/10`}`,
+        description: hit.subtitle ?? undefined,
+        input_message_content: { message_text: shareText(hit) },
+      })),
+      { cache_time: 0, is_personal: true },
+    );
   });
 
   bot.on("message:text", async (ctx) => {
