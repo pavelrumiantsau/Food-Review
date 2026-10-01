@@ -63,6 +63,8 @@ async function seed(initData) {
     });
   await post("/places", { name: "Aardvark Bistro", categories: ["Lithuanian"], rating: 8 });
   await post("/places", { name: "Bravo Pizza", categories: ["Pizza"] });
+  // Enough rows to scroll.
+  for (let i = 1; i <= 40; i++) await post("/places", { name: `Place ${String(i).padStart(2, "0")}`, categories: ["General"] });
   // Mark the first place as imported from the old 5-point list.
   execFileSync("npx", ["wrangler", "d1", "execute", "food-review", "--local", "--persist-to", dir,
     "--command", "UPDATE places SET rating_imported = 1 WHERE name = 'Aardvark Bistro'"], { stdio: "ignore" });
@@ -116,6 +118,18 @@ async function run(browser, initData) {
   check("opens a place from the list", (await text()).includes("Converted from your 5-point list"));
   await back();
   check("Back returns to the list", await onHome());
+
+  // Scroll position survives opening a place and going Back, with the list drawn immediately.
+  await page.evaluate(() => window.scrollTo(0, 1200));
+  await wait(200);
+  const scrolled = await page.evaluate(() => window.scrollY);
+  await click(".list li", "Place 30");
+  check("opening a place starts at the top", (await page.evaluate(() => window.scrollY)) === 0);
+  await page.evaluate(() => window.Telegram.WebView.receiveEvent("back_button_pressed"));
+  await wait(50); // before any network refresh could finish
+  const after = await page.evaluate(() => ({ y: window.scrollY, rows: document.querySelectorAll(".list li").length }));
+  check(`Back restores scroll (${scrolled} → ${after.y}) with the list already drawn (${after.rows} rows)`, Math.abs(after.y - scrolled) < 5 && after.rows >= 40);
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   await click(".list li", "Aardvark Bistro");
   await click(".rating-picker button", "9");

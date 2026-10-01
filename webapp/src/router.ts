@@ -1,6 +1,9 @@
 // Tiny history-based router. The Worker serves index.html for unknown paths, so deep links work.
 import { useSyncExternalStore } from "react";
 
+// Scroll positions are restored by the app (see App.tsx) once the screen has rendered.
+history.scrollRestoration = "manual";
+
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 window.addEventListener("popstate", notify);
@@ -9,8 +12,13 @@ window.addEventListener("popstate", notify);
 const depth = () => (history.state?.depth as number | undefined) ?? 0;
 
 export function navigate(to: string, { replace = false } = {}) {
-  if (replace) history.replaceState({ depth: depth() }, "", to);
-  else history.pushState({ depth: depth() + 1 }, "", to);
+  if (replace) {
+    history.replaceState({ depth: depth() }, "", to);
+  } else {
+    // Remember where we were, so Back returns to the same scroll position.
+    history.replaceState({ ...history.state, scrollY: window.scrollY }, "");
+    history.pushState({ depth: depth() + 1 }, "", to);
+  }
   notify();
 }
 

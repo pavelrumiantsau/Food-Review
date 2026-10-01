@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { goBack, match, useLocation } from "./router";
 import { Home } from "./screens/Home";
 import { PlaceForm } from "./screens/PlaceForm";
@@ -37,16 +37,19 @@ export function App() {
     return () => void back.offClick(goBack);
   }, [isHome]);
 
+  // New screens start at the top; Back restores the saved position (see router.navigate).
+  // Layout effect: runs after the screen (with cached data) is in the DOM, before paint.
   // Block body on purpose: scrollTo returns a Promise in current browsers, and an effect's
   // return value is called as its cleanup.
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.path]);
+  const href = location.path + "?" + location.params;
+  useLayoutEffect(() => {
+    window.scrollTo(0, (history.state?.scrollY as number | undefined) ?? 0);
+  }, [href]);
 
   return (
     <>
       {!tg && <p className="message error">Open this app from the Telegram bot.</p>}
-      <Screen key={location.path + "?" + location.params} {...location} />
+      <Screen key={href} {...location} />
     </>
   );
 }

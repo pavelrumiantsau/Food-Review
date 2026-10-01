@@ -16,10 +16,12 @@ interface HomeState {
   placeFilter: PlaceFilter;
   category: string;
   sort: "name" | "rating" | "recent";
+  placeLimit: number;
+  productLimit: number;
 }
 
 // Survives navigating to a detail screen and back.
-let saved: HomeState = { tab: "places", q: "", placeFilter: "all", category: "", sort: "name" };
+let saved: HomeState = { tab: "places", q: "", placeFilter: "all", category: "", sort: "name", placeLimit: PAGE, productLimit: PAGE };
 
 export function Home() {
   const [state, setState] = useState(saved);
@@ -47,7 +49,7 @@ export function Home() {
               </button>
             ))}
           </div>
-          {state.tab === "places" ? <PlaceList state={state} update={update} /> : <ProductList sort={state.sort} update={update} />}
+          {state.tab === "places" ? <PlaceList state={state} update={update} /> : <ProductList state={state} update={update} />}
         </>
       )}
 
@@ -62,7 +64,8 @@ export function Home() {
 }
 
 function SearchResults({ q }: { q: string }) {
-  const { data, error, loading } = useLoad(() => api.get<{ results: SearchHit[] }>(`/search${query({ q, limit: 50 })}`), [q]);
+  const path = `/search${query({ q, limit: 50 })}`;
+  const { data, error, loading } = useLoad(() => api.get<{ results: SearchHit[] }>(path), [path], path);
   if (!data) return <Message error={error} loading={loading} />;
   if (data.results.length === 0) return <p className="message">Nothing found for “{q}”.</p>;
   return (
@@ -89,16 +92,15 @@ const PLACE_FILTERS: { id: PlaceFilter; label: string }[] = [
 ];
 
 function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<HomeState>) => void }) {
-  const [limit, setLimit] = useState(PAGE);
-  const categories = useLoad(() => api.get<{ items: { name: string; count: number }[] }>("/categories"), []);
+  const limit = state.placeLimit;
+  const setLimit = (placeLimit: number) => update({ placeLimit });
+  const categories = useLoad(() => api.get<{ items: { name: string; count: number }[] }>("/categories"), [], "/categories");
   const filter = {
     imported: state.placeFilter === "imported" ? true : undefined,
     rated: state.placeFilter === "unrated" ? false : state.placeFilter === "rated" ? true : undefined,
   };
-  const { data, error, loading } = useLoad(
-    () => api.get<{ items: PlaceSummary[] }>(`/places${query({ ...filter, category: state.category, sort: state.sort, limit })}`),
-    [state.placeFilter, state.category, state.sort, limit],
-  );
+  const path = `/places${query({ ...filter, category: state.category, sort: state.sort, limit })}`;
+  const { data, error, loading } = useLoad(() => api.get<{ items: PlaceSummary[] }>(path), [path], path);
 
   return (
     <>
@@ -153,9 +155,11 @@ function PlaceList({ state, update }: { state: HomeState; update: (p: Partial<Ho
   );
 }
 
-function ProductList({ sort, update }: { sort: HomeState["sort"]; update: (p: Partial<HomeState>) => void }) {
-  const [limit, setLimit] = useState(PAGE);
-  const { data, error, loading } = useLoad(() => api.get<{ items: Product[] }>(`/products${query({ sort, limit })}`), [sort, limit]);
+function ProductList({ state, update }: { state: HomeState; update: (p: Partial<HomeState>) => void }) {
+  const { sort, productLimit: limit } = state;
+  const setLimit = (productLimit: number) => update({ productLimit });
+  const path = `/products${query({ sort, limit })}`;
+  const { data, error, loading } = useLoad(() => api.get<{ items: Product[] }>(path), [path], path);
   return (
     <>
       <div className="filters">
