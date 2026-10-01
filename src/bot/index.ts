@@ -2,6 +2,7 @@ import { Bot, InlineKeyboard } from "grammy";
 import { findProductsByBarcode } from "../db/products";
 import { search } from "../db/search";
 import type { Env } from "../env";
+import { sendBackup } from "../lib/export";
 import { lookupBarcode } from "../lib/off";
 import { escapeHtml, formatHit, formatProduct } from "./format";
 
@@ -29,6 +30,11 @@ export function getBot(env: Env, webAppUrl: string): Bot {
   );
 
   bot.command("scan", (ctx) => ctx.reply("Tap to open the scanner:", { reply_markup: openApp("Scan barcode", "/scan") }));
+
+  bot.command("export", async (ctx) => {
+    await ctx.replyWithChatAction("upload_document");
+    await sendBackup(ctx.api, env.DB, ctx.chat.id, "Food Review backup");
+  });
 
   bot.hears(/^\d{8,14}$/, async (ctx) => {
     const barcode = ctx.message!.text!;

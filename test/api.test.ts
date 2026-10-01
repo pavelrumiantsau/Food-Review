@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import app from "../src/index";
+import { app } from "../src/index";
 import { authHeader, setupDb } from "./helpers";
 
 let t: Awaited<ReturnType<typeof setupDb>>;

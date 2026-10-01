@@ -45,5 +45,6 @@ await call("setMyCommands", {
   commands: [
     { command: "start", description: "Open Food Review" },
     { command: "scan", description: "Scan a barcode" },
+    { command: "export", description: "Send a backup of all data" },
   ],
 });

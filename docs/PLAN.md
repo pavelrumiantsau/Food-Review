@@ -168,9 +168,9 @@ wrangler.jsonc
 - [ ] Empty/error states, haptic feedback, Telegram theme colours.
 
 ### Phase 5 — Portability and backup
-- [ ] `/export`: JSON (whole DB) + CSV per table + ZIP of photos.
-- [ ] Weekly cron, which sends the backup file to your Telegram chat.
-- [ ] Document migrating elsewhere in the README.
+- [x] `/export`: JSON (whole DB, restorable with `scripts/restore.ts`) + CSVs. *Photos: add once R2 is enabled.*
+- [x] Weekly cron, which sends the backup file to your Telegram chat (Mondays 06:00 UTC).
+- [x] Document migrating elsewhere in the README.
 
 ### Later / nice-to-have
 - Inline mode (`@yourbot snickers` in any chat, to share a rating).
