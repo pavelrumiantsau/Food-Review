@@ -24,6 +24,7 @@ npm run set-webhook -- https://food-review.<subdomain>.workers.dev
 | `npm test` | Unit and API tests (local D1) |
 | `npm run e2e` | Headless-Chrome click-through of the Mini App against a throwaway local Worker |
 | `npm run import:excel` | Dry-run report + `data/import.sql` from the old Excel list |
+| `npm run geocode` | Look up locations for places without one in OpenStreetMap → `data/geocode-report.csv` + `data/geocode.sql` (review, then apply) |
 | `npm run typecheck` | Type-check Worker, tests and Mini App |
 
 ## Backups and moving the data elsewhere

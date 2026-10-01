@@ -10,7 +10,8 @@
     "test": "vitest run",
     "set-webhook": "node scripts/set-webhook.mjs",
     "import:excel": "node scripts/import-excel.ts",
-    "e2e": "npm run build && node test/e2e.mjs"
+    "e2e": "npm run build && node test/e2e.mjs",
+    "geocode": "node scripts/geocode-places.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",

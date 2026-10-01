@@ -61,7 +61,7 @@ export async function reverseGeocode(
   fetcher: typeof fetch = fetch,
 ): Promise<{ address: string | null; city: string | null }> {
   const res = await fetcher(
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=en&lat=${lat}&lon=${lng}`,
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=lt&lat=${lat}&lon=${lng}`,
     { headers: { "User-Agent": USER_AGENT } },
   );
   if (!res.ok) return { address: null, city: null };
