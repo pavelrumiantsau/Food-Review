@@ -1,4 +1,18 @@
 // Minimal typing for the parts of window.Telegram.WebApp we use.
+// Methods return their object for chaining; typed as such so TypeScript catches
+// accidentally returning one from a React effect (it would be called as a cleanup).
+interface BackButton {
+  show(): BackButton;
+  hide(): BackButton;
+  onClick(cb: () => void): BackButton;
+  offClick(cb: () => void): BackButton;
+}
+
+interface HapticFeedback {
+  notificationOccurred(type: "success" | "error" | "warning"): HapticFeedback;
+  selectionChanged(): HapticFeedback;
+}
+
 interface TelegramWebApp {
   initData: string;
   platform: string;
@@ -7,11 +21,8 @@ interface TelegramWebApp {
   expand(): void;
   isVersionAtLeast(version: string): boolean;
   showConfirm(message: string, callback: (ok: boolean) => void): void;
-  BackButton: { show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void };
-  HapticFeedback: {
-    notificationOccurred(type: "success" | "error" | "warning"): void;
-    selectionChanged(): void;
-  };
+  BackButton: BackButton;
+  HapticFeedback: HapticFeedback;
 }
 
 declare global {
@@ -23,9 +34,9 @@ declare global {
 export const tg: TelegramWebApp | undefined = window.Telegram?.WebApp?.initData ? window.Telegram.WebApp : undefined;
 
 export const haptic = {
-  success: () => tg?.HapticFeedback.notificationOccurred("success"),
-  error: () => tg?.HapticFeedback.notificationOccurred("error"),
-  select: () => tg?.HapticFeedback.selectionChanged(),
+  success: () => void tg?.HapticFeedback.notificationOccurred("success"),
+  error: () => void tg?.HapticFeedback.notificationOccurred("error"),
+  select: () => void tg?.HapticFeedback.selectionChanged(),
 };
 
 /** Native Telegram confirm dialog, falling back to window.confirm outside Telegram. */

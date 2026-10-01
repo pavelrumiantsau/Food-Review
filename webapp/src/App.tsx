@@ -26,13 +26,22 @@ export function App() {
   useEffect(() => {
     const back = tg?.BackButton;
     if (!back) return;
-    if (isHome) return back.hide();
+    // Telegram's methods return the BackButton for chaining, so never return their result
+    // from the effect: React would call it as a cleanup function and crash.
+    if (isHome) {
+      back.hide();
+      return;
+    }
     back.show();
     back.onClick(goBack);
-    return () => back.offClick(goBack);
+    return () => void back.offClick(goBack);
   }, [isHome]);
 
-  useEffect(() => window.scrollTo(0, 0), [location.path]);
+  // Block body on purpose: scrollTo returns a Promise in current browsers, and an effect's
+  // return value is called as its cleanup.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.path]);
 
   return (
     <>
