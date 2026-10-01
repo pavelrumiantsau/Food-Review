@@ -1,0 +1,48 @@
+:root {
+  --bg: var(--tg-theme-bg-color, #fff);
+  --text: var(--tg-theme-text-color, #000);
+  --hint: var(--tg-theme-hint-color, #8e8e93);
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #fff);
+  --card: var(--tg-theme-secondary-bg-color, #f2f2f7);
+  color-scheme: light dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main { padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 0 0 8px; }
+section { margin-top: 20px; }
+.hint { color: var(--hint); font-size: 13px; margin: 0; }
+button, .button {
+  display: inline-block;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+form { display: flex; gap: 8px; }
+input:not([type="file"]) {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hint);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+video { width: 100%; border-radius: 12px; margin-bottom: 8px; background: #000; }
+.card { background: var(--card); border-radius: 12px; padding: 12px; }
+.product { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+.product img { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; background: #fff; }
+pre { background: var(--card); border-radius: 8px; padding: 8px; font-size: 12px; white-space: pre-wrap; margin: 0; }

@@ -1,0 +1,4 @@
+# Copy to .dev.vars (git-ignored), fill in, then: npx wrangler secret bulk .dev.vars
+BOT_TOKEN="123456:ABC..."          # from @BotFather
+OWNER_TELEGRAM_ID="123456789"      # from @userinfobot
+WEBHOOK_SECRET="random-string"     # any random string, [A-Za-z0-9_-]

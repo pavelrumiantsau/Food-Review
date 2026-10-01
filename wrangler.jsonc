@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "food-review",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./webapp/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/bot"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "food-review",
+      "database_id": "9d5ff8ef-bbf2-432b-af9a-dc8360c5027d",
+      "migrations_dir": "migrations"
+    }
+  ]
+  // Secrets (set with `npx wrangler secret bulk .dev.vars`):
+  //   BOT_TOKEN, OWNER_TELEGRAM_ID, WEBHOOK_SECRET
+}
