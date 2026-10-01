@@ -6,7 +6,7 @@ export function normalize(text: string): string {
   return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function compose(...parts: (string | null | undefined)[]): string {
+export function composeSearchText(...parts: (string | null | undefined)[]): string {
   return normalize(parts.filter(Boolean).join(" "));
 }
 
@@ -21,7 +21,7 @@ export async function refreshProductSearch(db: D1Database, id: number): Promise<
     .bind(id)
     .first<Record<string, string | null>>();
   if (!row) return;
-  const text = compose(row.name, row.brand, row.category, row.barcode, row.tags, row.review);
+  const text = composeSearchText(row.name, row.brand, row.category, row.barcode, row.tags, row.review);
   await db.prepare("UPDATE products SET search_text = ? WHERE id = ?").bind(text, id).run();
 }
 
@@ -39,7 +39,7 @@ export async function refreshPlaceSearch(db: D1Database, id: number): Promise<vo
     .bind(id)
     .first<Record<string, string | null>>();
   if (!row) return;
-  const text = compose(row.name, row.categories, row.tags, row.dishes, row.city, row.address, row.notes);
+  const text = composeSearchText(row.name, row.categories, row.tags, row.dishes, row.city, row.address, row.notes);
   await db.prepare("UPDATE places SET search_text = ? WHERE id = ?").bind(text, id).run();
 }
 
