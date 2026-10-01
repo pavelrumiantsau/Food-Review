@@ -1,11 +1,5 @@
 // Open Food Facts product lookup: https://openfoodfacts.github.io/openfoodfacts-server/api/
-
-export interface OffProduct {
-  barcode: string;
-  name: string | null;
-  brand: string | null;
-  imageUrl: string | null;
-}
+import type { OffProduct } from "../types";
 
 const FIELDS = "product_name,product_name_en,brands,image_front_small_url";
 

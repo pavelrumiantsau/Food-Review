@@ -152,12 +152,12 @@ wrangler.jsonc
 
 ### Phase 2 — Products
 - [ ] Open Food Facts lookup, cached in `products`.
-- [ ] Mini App: Scan screen, product card/form, rating control.
+- [x] Mini App: Scan screen, product card/form, rating control.
 - [ ] Bot: 1–10 inline rating keyboard, optional review step.
 - [ ] Photo upload: resized on the phone, then sent to R2, served through signed URLs.
 
 ### Phase 3 — Places + Excel import
-- [ ] Mini App: place list/detail/form, visits, dishes, categories, tags, price level.
+- [x] Mini App: place list/detail/form, visits, dishes, categories, tags, price level, delete.
 - [x] `scripts/import-excel.ts` (see §6a): dry-run report first, then idempotent SQL loaded with `wrangler d1 execute`. **Imported 2026-10-01: 382 places, 179 rated (flagged), 67 categories.**
 - [ ] Bot: `/addplace <name>` and delete with a confirmation button.
 - [ ] Bot: add a quick visit from chat (`/visit <place>` → rating → note).

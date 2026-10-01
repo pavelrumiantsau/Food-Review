@@ -5,7 +5,13 @@ interface TelegramWebApp {
   version: string;
   ready(): void;
   expand(): void;
-  HapticFeedback?: { notificationOccurred(type: "success" | "error" | "warning"): void };
+  isVersionAtLeast(version: string): boolean;
+  showConfirm(message: string, callback: (ok: boolean) => void): void;
+  BackButton: { show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void };
+  HapticFeedback: {
+    notificationOccurred(type: "success" | "error" | "warning"): void;
+    selectionChanged(): void;
+  };
 }
 
 declare global {
@@ -16,9 +22,14 @@ declare global {
 
 export const tg: TelegramWebApp | undefined = window.Telegram?.WebApp?.initData ? window.Telegram.WebApp : undefined;
 
-export async function api<T>(path: string): Promise<T> {
-  const res = await fetch(path, { headers: { Authorization: `tma ${tg?.initData ?? ""}` } });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
-  return body as T;
+export const haptic = {
+  success: () => tg?.HapticFeedback.notificationOccurred("success"),
+  error: () => tg?.HapticFeedback.notificationOccurred("error"),
+  select: () => tg?.HapticFeedback.selectionChanged(),
+};
+
+/** Native Telegram confirm dialog, falling back to window.confirm outside Telegram. */
+export function confirmDialog(message: string): Promise<boolean> {
+  if (tg?.isVersionAtLeast("6.2")) return new Promise((resolve) => tg.showConfirm(message, resolve));
+  return Promise.resolve(window.confirm(message));
 }

@@ -1,3 +1,5 @@
+import type { SearchHit } from "../types";
+
 // Search uses a normalised `search_text` column on products and places:
 // lower-case, no diacritics ("Žemaičių" → "zemaiciu", "Ёлка" → "елка"), so a plain LIKE
 // matches regardless of case or accents in any script.
@@ -41,14 +43,6 @@ export async function refreshPlaceSearch(db: D1Database, id: number): Promise<vo
   if (!row) return;
   const text = composeSearchText(row.name, row.categories, row.tags, row.dishes, row.city, row.address, row.notes);
   await db.prepare("UPDATE places SET search_text = ? WHERE id = ?").bind(text, id).run();
-}
-
-export interface SearchHit {
-  kind: "product" | "place";
-  id: number;
-  name: string;
-  subtitle: string | null;
-  rating: number | null;
 }
 
 export type SearchKind = "all" | "product" | "place";

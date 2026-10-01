@@ -1,152 +1,43 @@
-import { useEffect, useRef, useState } from "react";
-import { decodeImage, scanVideo } from "./scanner";
-import { api, tg } from "./telegram";
+import { useEffect } from "react";
+import { goBack, match, useLocation } from "./router";
+import { Home } from "./screens/Home";
+import { PlaceForm } from "./screens/PlaceForm";
+import { PlaceScreen } from "./screens/PlaceScreen";
+import { ProductScreen } from "./screens/ProductScreen";
+import { Scan } from "./screens/Scan";
+import { tg } from "./telegram";
 
-interface OffProduct {
-  barcode: string;
-  name: string | null;
-  brand: string | null;
-  imageUrl: string | null;
+function Screen({ path, params }: ReturnType<typeof useLocation>) {
+  let m: Record<string, string> | null;
+  if (path === "/scan") return <Scan />;
+  if (path === "/product/new") return <ProductScreen barcode={params.get("barcode") ?? undefined} />;
+  if ((m = match("/product/:id", path))) return <ProductScreen id={Number(m.id)} />;
+  if (path === "/place/new") return <PlaceForm />;
+  if ((m = match("/place/:id/edit", path))) return <PlaceForm id={Number(m.id)} />;
+  if ((m = match("/place/:id", path))) return <PlaceScreen id={Number(m.id)} />;
+  return <Home />;
 }
 
-type Method = "camera" | "photo" | "manual";
-
-// Phase 0 spike: verifies auth and which barcode capture method works inside Telegram on iOS.
 export function App() {
-  const [me, setMe] = useState("checking…");
-  const [log, setLog] = useState<string[]>([]);
-  const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<{ code: string; method: Method; ms?: number } | null>(null);
-  const [product, setProduct] = useState<OffProduct | "not found" | null>(null);
-  const [manual, setManual] = useState("");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const stopRef = useRef<() => void>(() => {});
+  const location = useLocation();
+  const isHome = !["/scan", "/product", "/place"].some((p) => location.path.startsWith(p));
 
-  const addLog = (line: string) => setLog((l) => [`${new Date().toLocaleTimeString()} ${line}`, ...l]);
-
+  // Telegram's native Back button replaces browser navigation inside the Mini App.
   useEffect(() => {
-    if (!tg) return setMe("not opened from Telegram");
-    api<{ user: { first_name: string; id: number } }>("/api/me")
-      .then(({ user }) => setMe(`✓ ${user.first_name} (${user.id})`))
-      .catch((e) => setMe(`✗ ${e.message}`));
-    return () => stopRef.current();
-  }, []);
+    const back = tg?.BackButton;
+    if (!back) return;
+    if (isHome) return back.hide();
+    back.show();
+    back.onClick(goBack);
+    return () => back.offClick(goBack);
+  }, [isHome]);
 
-  async function found(code: string, method: Method, ms?: number) {
-    tg?.HapticFeedback?.notificationOccurred("success");
-    setResult({ code, method, ms });
-    setProduct(null);
-    addLog(`decoded ${code} via ${method}${ms ? ` in ${ms} ms` : ""}`);
-    try {
-      setProduct(await api<OffProduct>(`/api/off/${code}`));
-    } catch (e) {
-      setProduct("not found");
-      addLog(`lookup: ${(e as Error).message}`);
-    }
-  }
-
-  async function startCamera() {
-    if (!navigator.mediaDevices?.getUserMedia) return addLog("getUserMedia is not available");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      const video = videoRef.current!;
-      video.srcObject = stream;
-      await video.play();
-      setScanning(true);
-      addLog("camera started");
-      const started = performance.now();
-      const scan = scanVideo(video, (code) => {
-        stopCamera();
-        found(code, "camera", Math.round(performance.now() - started));
-      });
-      stopRef.current = () => {
-        scan.stop();
-        stream.getTracks().forEach((t) => t.stop());
-      };
-    } catch (e) {
-      addLog(`camera error: ${(e as Error).name}: ${(e as Error).message}`);
-    }
-  }
-
-  function stopCamera() {
-    stopRef.current();
-    stopRef.current = () => {};
-    setScanning(false);
-  }
-
-  async function onPhoto(file: File | undefined) {
-    if (!file) return;
-    addLog(`photo ${Math.round(file.size / 1024)} KB, decoding…`);
-    const code = await decodeImage(file);
-    code ? found(code, "photo") : addLog("no barcode found in photo");
-  }
+  useEffect(() => window.scrollTo(0, 0), [location.path]);
 
   return (
-    <main>
-      <h1>Scanner test</h1>
-      <p className="hint">
-        Auth: {me}
-        <br />
-        Platform: {tg?.platform ?? "browser"} {tg?.version ?? ""} · camera API:{" "}
-        {typeof navigator.mediaDevices?.getUserMedia === "function" ? "yes" : "no"}
-      </p>
-
-      <section>
-        <h2>1. Live camera</h2>
-        <video ref={videoRef} playsInline muted hidden={!scanning} />
-        {scanning ? (
-          <button onClick={stopCamera}>Stop</button>
-        ) : (
-          <button onClick={startCamera}>Start camera</button>
-        )}
-      </section>
-
-      <section>
-        <h2>2. Take a photo</h2>
-        <label className="button">
-          Take photo
-          <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPhoto(e.target.files?.[0])} />
-        </label>
-      </section>
-
-      <section>
-        <h2>3. Type digits</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (/^\d{8,14}$/.test(manual)) found(manual, "manual");
-          }}
-        >
-          <input inputMode="numeric" pattern="\d{8,14}" placeholder="4770123456789" value={manual} onChange={(e) => setManual(e.target.value)} />
-          <button type="submit">Look up</button>
-        </form>
-      </section>
-
-      {result && (
-        <section className="card">
-          <h2>{result.code}</h2>
-          <p className="hint">via {result.method}{result.ms ? ` · ${result.ms} ms` : ""}</p>
-          {product === null && <p>Looking up…</p>}
-          {product === "not found" && <p>Not in Open Food Facts.</p>}
-          {product && product !== "not found" && (
-            <div className="product">
-              {product.imageUrl && <img src={product.imageUrl} alt="" />}
-              <div>
-                <strong>{product.name ?? "(no name)"}</strong>
-                <div className="hint">{product.brand}</div>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
-      <section>
-        <h2>Log</h2>
-        <pre>{log.join("\n") || "—"}</pre>
-      </section>
-    </main>
+    <>
+      {!tg && <p className="message error">Open this app from the Telegram bot.</p>}
+      <Screen key={location.path + "?" + location.params} {...location} />
+    </>
   );
 }

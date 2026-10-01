@@ -14,7 +14,7 @@ export function getBot(env: Env, webAppUrl: string): Bot {
   if (cached?.token === env.BOT_TOKEN) return cached.bot;
   const bot = new Bot(env.BOT_TOKEN);
   const ownerId = Number(env.OWNER_TELEGRAM_ID);
-  const openApp = (label = "Open Food Review", hash = "") => new InlineKeyboard().webApp(label, webAppUrl + hash);
+  const openApp = (label = "Open Food Review", path = "/") => new InlineKeyboard().webApp(label, webAppUrl + path);
 
   // Single-user app: silently ignore everyone else.
   bot.use(async (ctx, next) => {
@@ -28,19 +28,25 @@ export function getBot(env: Env, webAppUrl: string): Bot {
     ),
   );
 
-  bot.command("scan", (ctx) => ctx.reply("Tap to open the scanner:", { reply_markup: openApp("Scan barcode", "#scan") }));
+  bot.command("scan", (ctx) => ctx.reply("Tap to open the scanner:", { reply_markup: openApp("Scan barcode", "/scan") }));
 
   bot.hears(/^\d{8,14}$/, async (ctx) => {
     const barcode = ctx.message!.text!;
     const own = await findProductsByBarcode(env.DB, barcode);
     if (own.length) {
-      return ctx.reply(own.map(formatProduct).join("\n\n"), { parse_mode: "HTML" });
+      return ctx.reply(own.map(formatProduct).join("\n\n"), {
+        parse_mode: "HTML",
+        reply_markup: openApp("Open in app", `/product/${own[0].id}`),
+      });
     }
     const off = await lookupBarcode(barcode);
     const description = off
       ? `${escapeHtml(off.name ?? "(no name)")}${off.brand ? ` · ${escapeHtml(off.brand)}` : ""}`
       : "Unknown product";
-    return ctx.reply(`Not rated yet.\nOpen Food Facts: <b>${description}</b>`, { parse_mode: "HTML" });
+    return ctx.reply(`Not rated yet.\nOpen Food Facts: <b>${description}</b>`, {
+      parse_mode: "HTML",
+      reply_markup: openApp("Rate it", `/product/new?barcode=${barcode}`),
+    });
   });
 
   bot.on("message:text", async (ctx) => {
@@ -49,7 +55,12 @@ export function getBot(env: Env, webAppUrl: string): Bot {
     const hits = await search(env.DB, query, "all", MAX_RESULTS + 1);
     if (hits.length === 0) return ctx.reply(`Nothing found for “${query}”.`);
     const more = hits.length > MAX_RESULTS ? "\n\nMore results in the app." : "";
-    return ctx.reply(hits.slice(0, MAX_RESULTS).map(formatHit).join("\n") + more, { parse_mode: "HTML" });
+    const [first] = hits;
+    return ctx.reply(hits.slice(0, MAX_RESULTS).map(formatHit).join("\n") + more, {
+      parse_mode: "HTML",
+      // A single match gets a direct link; otherwise open the app's search.
+      reply_markup: hits.length === 1 ? openApp(`Open ${first.name}`, `/${first.kind}/${first.id}`) : openApp(),
+    });
   });
 
   cached = { token: env.BOT_TOKEN, bot };

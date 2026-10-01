@@ -1,5 +1,4 @@
-import type { Product } from "../db/products";
-import type { SearchHit } from "../db/search";
+import type { Product, SearchHit } from "../types";
 
 export const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 

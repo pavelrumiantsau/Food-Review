@@ -1,21 +1,7 @@
+import type { Product } from "../types";
 import { NOW, splitList, updateStatement } from "./common";
 import { refreshProductSearch } from "./search";
 import { PRODUCT_TAGS, setLinksStatements } from "./taxonomy";
-
-export interface Product {
-  id: number;
-  barcode: string | null;
-  name: string;
-  brand: string | null;
-  category: string | null;
-  rating: number | null;
-  review: string | null;
-  off_image_url: string | null;
-  source: "manual" | "off";
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
 
 export interface ProductFields {
   barcode?: string | null;

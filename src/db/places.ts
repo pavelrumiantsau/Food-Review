@@ -1,52 +1,7 @@
+import type { Dish, Place, PlaceSummary, Visit } from "../types";
 import { InvalidInput, NOW, splitList, updateStatement } from "./common";
 import { refreshPlaceSearch } from "./search";
 import { PLACE_CATEGORIES, PLACE_TAGS, setLinksStatements } from "./taxonomy";
-
-export interface PlaceSummary {
-  id: number;
-  name: string;
-  city: string | null;
-  price_level: number | null;
-  rating: number | null;
-  rating_imported: boolean;
-  categories: string[];
-  visit_count: number;
-  last_visited_on: string | null;
-}
-
-export interface Visit {
-  id: number;
-  place_id: number;
-  visited_on: string;
-  rating: number | null;
-  notes: string | null;
-  created_at: string;
-}
-
-export interface Dish {
-  id: number;
-  place_id: number;
-  visit_id: number | null;
-  name: string;
-  rating: number | null;
-  notes: string | null;
-  created_at: string;
-}
-
-export interface Place extends PlaceSummary {
-  address: string | null;
-  map_url: string | null;
-  website: string | null;
-  lat: number | null;
-  lng: number | null;
-  notes: string | null;
-  tags: string[];
-  visits: Visit[];
-  dishes: Dish[];
-  visit_avg: number | null;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface PlaceFields {
   name?: string;
