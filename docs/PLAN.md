@@ -177,6 +177,7 @@ wrangler.jsonc
 - [x] "Near me": "Nearest" sort for places with a location (Telegram `LocationManager`, browser geolocation fallback).
 - [x] Paste a Google Maps link, which auto-fills name/address/coordinates (address via OpenStreetMap Nominatim). Sharing a Maps link to the bot offers "Add place" / "Save location".
 - [x] Rating history for products (re-tasting over time), migration `0002`.
+- [x] Bulk location lookup in OpenStreetMap (`npm run geocode`). **Applied 2026-10-02: 151 of 382 places located;** 42 chains skipped (several branches), 183 not found. The rest get a location when a Google Maps link is shared to the bot ("Save location").
 
 ### Future: photos (deferred 2026-10-01, waiting for R2)
 Skipped for now by decision; everything else is built so photos can be added without rework.
